@@ -217,7 +217,7 @@
         `&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&acc=${encodeURIComponent(acc)}` +
         `&visitorId=${encodeURIComponent(fingerprintData.visitorId)}` +
         `&ip=${encodeURIComponent(fingerprintData.ip)}` +
-        `&region=$=${encodeURIComponent(fingerprintData.region)}` +
+        `&region=${encodeURIComponent(fingerprintData.region)}` +
         `&country=${encodeURIComponent(fingerprintData.country)}` +
         `&city=${encodeURIComponent(fingerprintData.city)}`;
       img.onerror = () => console.error("GET request failed:", url);
@@ -236,7 +236,7 @@
           `&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&acc=${encodeURIComponent(acc)}` +
           `&visitorId=${encodeURIComponent(fingerprintData.visitorId)}` +
           `&ip=${encodeURIComponent(fingerprintData.ip)}` +
-          `&region=$=${encodeURIComponent(fingerprintData.region)}` +
+          `&region=${encodeURIComponent(fingerprintData.region)}` +
           `&country=${encodeURIComponent(fingerprintData.country)}` +
           `&city=${encodeURIComponent(fingerprintData.city)}`;
         img.onerror = () => console.error("Retry GET request failed:", url);
